@@ -1,0 +1,12 @@
+/* styles.css */
+.nav {display:flex;justify-content:space-between;align-items:center;padding:1rem;}
+.hamburger {display:none;background:none;border:1px solid #333;padding:0.5rem 1rem;cursor:pointer;}
+.menu {display:flex;gap:2rem;transition:.3s ease;list-style:none;margin:0;padding:0;}
+.menu li {padding:0.5rem 1rem;cursor:pointer;}
+
+@media (max-width:767px){
+  .hamburger {display:block;}
+  .menu{flex-direction:column;position:absolute;top:64px;left:0;width:100%;
+        background:#fff;transform:translateY(-150%);box-shadow:0 2px 5px rgba(0,0,0,0.1);}
+  .menu.open{transform:translateY(0);}
+}
