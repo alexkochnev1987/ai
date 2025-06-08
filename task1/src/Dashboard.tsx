@@ -55,7 +55,7 @@ export default function Dashboard() {
     };
 
     // Start the computation
-    workerRef.current.postMessage({ iterations: 1e8 });
+    workerRef.current.postMessage({ iterations: 1e10 });
 
     // Cleanup function
     return () => {

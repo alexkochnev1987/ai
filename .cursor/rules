@@ -1,0 +1,129 @@
+# Go Backend API Development Rules
+
+## Architecture & Structure
+
+- **Domain-Driven Design**: Organize code by business domains (users, auth, posts) with clear boundaries
+- **Layered Architecture**: Separate concerns into layers:
+  - `handlers/` - HTTP request/response handling
+  - `services/` - Business logic and orchestration
+  - `repositories/` - Data access and persistence
+  - `models/` - Data structures and domain entities
+  - `middleware/` - Cross-cutting concerns (auth, logging, CORS)
+  - `config/` - Configuration management
+  - `migrations/` - Database schema changes
+- **Package Organization**: Each domain gets its own package with clear interfaces
+- **Dependency Injection**: Use interfaces for testability and loose coupling
+
+## Go-Specific Best Practices
+
+- **Error Handling**: Always handle errors explicitly, wrap with context using `fmt.Errorf("operation failed: %w", err)`
+- **Context Usage**: Pass context.Context for cancellation and timeouts in all I/O operations
+- **Goroutine Safety**: Use mutexes, channels, or atomic operations for concurrent access
+- **Resource Management**: Always defer cleanup (close files, DB connections, HTTP bodies)
+- **Interface Design**: Keep interfaces small and focused (single responsibility)
+- **Struct Tags**: Use proper JSON, DB, and validation tags on structs
+- **Zero Values**: Design structs to have meaningful zero values where possible
+
+## Database Design & Operations
+
+- **Schema First**: Define clear database schemas with proper constraints and indexes
+- **Migration Strategy**: Version all schema changes, never modify existing migrations
+- **Connection Management**: Use connection pooling, set proper timeouts and limits
+- **Transaction Management**: Wrap related operations in transactions with proper rollback
+- **Query Optimization**: Use prepared statements, avoid N+1 queries, implement pagination
+- **Data Validation**: Validate at both application and database levels
+- **Referential Integrity**: Use foreign keys and constraints appropriately
+
+## REST API Design
+
+- **Resource-Oriented**: Design around resources, not actions (users, posts, comments)
+- **HTTP Methods**: Use proper verbs (GET/POST/PUT/PATCH/DELETE) with semantic meaning
+- **Status Codes**: Return appropriate HTTP status codes (200, 201, 400, 401, 404, 500)
+- **Response Format**: Consistent JSON structure with metadata (pagination, errors)
+- **Input Validation**: Validate all inputs with clear error messages
+- **Content Negotiation**: Support proper Accept/Content-Type headers
+- **Versioning Strategy**: Plan for API versioning (URL path or headers)
+
+## Authentication & Security
+
+- **JWT Implementation**: Use RS256 or HS256 with proper key management
+- **Password Security**: Use bcrypt or argon2 with appropriate cost factors
+- **Token Lifecycle**: Implement proper token expiration and refresh mechanisms
+- **Authorization**: Separate authentication from authorization checks
+- **Input Sanitization**: Sanitize all user inputs to prevent injection attacks
+- **Rate Limiting**: Implement rate limiting for authentication endpoints
+- **HTTPS Enforcement**: Ensure all production traffic uses HTTPS
+- **CORS Configuration**: Configure CORS policies appropriately
+
+## Docker & Containerization
+
+- **Multi-Stage Builds**: Use multi-stage Dockerfiles for smaller production images
+- **Security Scanning**: Scan images for vulnerabilities, use minimal base images
+- **Environment Configuration**: Use environment variables for configuration
+- **Health Checks**: Implement proper health check endpoints
+- **Resource Limits**: Set appropriate memory and CPU limits
+- **Data Persistence**: Use volumes for persistent data, avoid data in containers
+- **Network Isolation**: Use Docker networks for service communication
+
+## Testing Strategy
+
+- **Test Pyramid**: More unit tests, fewer integration tests, minimal E2E tests
+- **Table-Driven Tests**: Use Go's table-driven test pattern for comprehensive coverage
+- **Test Isolation**: Each test should be independent and isolated
+- **Mock Interfaces**: Mock external dependencies using interfaces
+- **Database Testing**: Use test databases or in-memory alternatives
+- **HTTP Testing**: Use httptest package for testing HTTP handlers
+- **Test Fixtures**: Create reusable test data and helper functions
+- **Coverage Goals**: Aim for >80% test coverage on critical business logic
+
+## Performance & Scalability
+
+- **Caching Strategy**: Implement appropriate caching (Redis, in-memory) for read-heavy operations
+- **Connection Pooling**: Configure proper database connection pools
+- **Graceful Shutdown**: Handle SIGTERM/SIGINT for graceful server shutdown
+- **Metrics & Monitoring**: Implement metrics collection (Prometheus) and logging
+- **Database Indexes**: Create indexes for frequently queried fields
+- **Pagination**: Implement cursor-based or offset-based pagination for large datasets
+- **Background Jobs**: Use worker patterns for async operations
+
+## Configuration Management
+
+- **Environment Variables**: Use env vars for secrets and environment-specific config
+- **Configuration Validation**: Validate all configuration at startup
+- **Default Values**: Provide sensible defaults for non-critical settings
+- **Configuration Structure**: Use struct-based configuration with proper validation tags
+- **Secret Management**: Never commit secrets, use proper secret management tools
+
+## Logging & Observability
+
+- **Structured Logging**: Use structured logging (JSON) with proper log levels
+- **Request Tracing**: Implement request ID tracing through the entire request lifecycle
+- **Error Context**: Include relevant context in error logs (user ID, operation, parameters)
+- **Performance Metrics**: Log response times, query durations, error rates
+- **Health Monitoring**: Implement health check endpoints for load balancers
+
+## Development Workflow
+
+- **Code Formatting**: Use gofmt and goimports consistently
+- **Linting**: Use golangci-lint with comprehensive rule sets
+- **Pre-commit Hooks**: Validate code quality before commits
+- **Dependency Management**: Use Go modules properly, pin versions in production
+- **Documentation**: Write clear documentation for APIs and internal packages
+- **Code Reviews**: Review for security, performance, and maintainability
+
+## API Documentation
+
+- **OpenAPI/Swagger**: Generate API documentation from code annotations
+- **Request/Response Examples**: Provide clear examples for all endpoints
+- **Error Documentation**: Document all possible error responses
+- **Authentication Docs**: Clear documentation for authentication flows
+- **Rate Limiting Info**: Document rate limits and retry strategies
+
+## Deployment & Operations
+
+- **Blue-Green Deployment**: Plan for zero-downtime deployments
+- **Database Migrations**: Automate and test database migrations
+- **Environment Parity**: Keep development, staging, and production environments similar
+- **Backup Strategy**: Implement and test database backup/restore procedures
+- **Monitoring Alerts**: Set up alerts for critical metrics and errors
+- **Rolling Updates**: Plan for gradual rollout of new versions

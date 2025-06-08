@@ -1,0 +1,108 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: jsonplaceholder_db
+    environment:
+      POSTGRES_DB: jsonplaceholder
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    networks:
+      - jsonplaceholder_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Redis (for caching - optional)
+  redis:
+    image: redis:7-alpine
+    container_name: jsonplaceholder_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - jsonplaceholder_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # API Application
+  api:
+    build: .
+    container_name: jsonplaceholder_api
+    ports:
+      - "8080:8080"
+    environment:
+      # Server configuration
+      SERVER_PORT: 8080
+      SERVER_HOST: 0.0.0.0
+      
+      # Database configuration
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_NAME: jsonplaceholder
+      DB_SSL_MODE: disable
+      
+      # Redis configuration
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      
+      # JWT configuration
+      JWT_SECRET_KEY: your-super-secret-jwt-key-change-in-production
+      JWT_ACCESS_TOKEN_EXPIRY: 1h
+      JWT_REFRESH_TOKEN_EXPIRY: 24h
+      
+      # App configuration
+      APP_ENVIRONMENT: development
+      APP_VERSION: 1.0.0
+      APP_DEBUG: true
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - jsonplaceholder_network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # Nginx (for production - optional reverse proxy)
+  nginx:
+    image: nginx:alpine
+    container_name: jsonplaceholder_nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./docker/nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - api
+    networks:
+      - jsonplaceholder_network
+    profiles:
+      - production
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  jsonplaceholder_network:
+    driver: bridge 
