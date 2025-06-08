@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 
 export default function PerformanceComparison() {
   const [result, setResult] = useState<number | null>(null);
@@ -13,7 +13,7 @@ export default function PerformanceComparison() {
     // This will freeze the UI!
     setTimeout(() => {
       let total = 0;
-      for (let i = 0; i < 1e8; i++) {
+      for (let i = 0; i < 1e10; i++) {
         total += i;
       }
       setResult(total);

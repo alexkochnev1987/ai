@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 
 export default function DashboardWithExternalWorker() {
   const [result, setResult] = useState<number | null>(null);
@@ -40,7 +40,7 @@ export default function DashboardWithExternalWorker() {
     };
 
     // Start the computation
-    workerRef.current.postMessage({ iterations: 1e8 });
+    workerRef.current.postMessage({ iterations: 1e10 });
 
     // Cleanup function
     return () => {

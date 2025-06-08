@@ -1,0 +1,22 @@
+.layout {
+  min-height: 100vh;
+  background-color: var(--color-background);
+}
+
+.main {
+  max-width: var(--container-xl);
+  margin: 0 auto;
+  padding: var(--spacing-2xl) var(--spacing-lg);
+}
+
+@media (max-width: 640px) {
+  .main {
+    padding: var(--spacing-2xl) var(--spacing-2xl);
+  }
+}
+
+@media (max-width: 1024px) {
+  .main {
+    padding: var(--spacing-2xl) var(--spacing-3xl);
+  }
+} 
