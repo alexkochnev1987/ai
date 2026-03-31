@@ -159,3 +159,108 @@ MVP считается готовым, если выполнены все усл
 
 **Ожидаемый результат Sprint 1:**
 - Готов технический «скелет» платформы и подтверждён рабочий транспорт между сервером и extension.
+
+
+## 7) Детальный runtime flow: после вставки ссылки до озвучки и исполнения
+
+Ниже — конкретный сценарий, который отвечает на вопрос «что происходит после ввода URL».
+
+### 7.1 Шаги пользователя в UI
+
+1. Пользователь вводит:
+   - `targetUrl`
+   - опционально: описание цели, язык, длительность, креды для входа.
+2. Нажимает «Сгенерировать план».
+3. UI делает `POST /api/presentations` и получает `presentationId` + `jobId`.
+4. UI подписывается на прогресс через `GET /api/jobs/:jobId/events` (SSE) или polling.
+
+### 7.2 Что делает сервер после `POST /api/presentations`
+
+Сервер создаёт запись `presentation` со статусом `queued` и ставит задачу в очередь `analysis_job`.
+
+**Пайплайн job-а:**
+1. `collect_context`:
+   - создаёт `session` для extension,
+   - отправляет команды: `navigate(targetUrl)`, `extract_dom`, `screenshot`.
+2. `build_analysis`:
+   - из snapshot-ов формирует сжатый контекст страницы,
+   - вызывает AI провайдера и сохраняет `presentation_analysis`.
+3. `build_plan`:
+   - второй AI вызов (или тот же с отдельным prompt) генерирует `presentation_steps[]`.
+4. `persist_plan`:
+   - нормализует шаги, duration, actions,
+   - сохраняет `presentation_plan` + `presentation_steps`.
+5. Меняет статус на `plan_ready`.
+
+### 7.3 Как именно генерируется план (AI)
+
+Рекомендуемый двухпроходный подход:
+
+1. **Анализ (pass 1):**
+   - вход: DOM snapshot + title + URL + цель пользователя,
+   - выход: `analysis` (главные блоки интерфейса, потенциальный user journey, риски).
+2. **Генерация шагов (pass 2):**
+   - вход: `analysis` + ограничение по времени + язык,
+   - выход: массив шагов формата:
+   - `title`, `narration_text`, `actions[]`, `estimated_duration_seconds`, `page_url`.
+
+**Валидация перед сохранением:**
+- шагов не 0,
+- есть `narration_text`,
+- у action корректный тип и payload,
+- суммарная длительность в допустимом диапазоне.
+
+### 7.4 Что происходит при нажатии Play
+
+1. UI: `POST /api/playback/start`.
+2. Сервер создаёт `playback_session` со статусом `running`.
+3. Оркестратор проходит шаги по порядку и кладёт в queue команды:
+   - `show_subtitle`
+   - `play_audio`
+   - `navigate/click/scroll/fill_input/wait`
+4. Extension по polling забирает следующую команду и исполняет её на целевой вкладке.
+5. По завершении каждой команды extension отправляет `command_result`.
+6. Сервер обновляет прогресс шага и двигается к следующей команде.
+
+### 7.5 Как озвучивается текст (TTS)
+
+Озвучка делается на **сервере**, а не в extension:
+
+1. После генерации/редактирования плана сервер берёт `narration_text` каждого шага.
+2. Вызывает TTS provider с параметрами `voice`, `language`, `speaking_rate`.
+3. Сохраняет аудиофайл и метаданные (`audio_url`, `duration_ms`) в `audio_assets`.
+4. При старте playback команда `play_audio` передаёт extension ссылку на готовый файл.
+5. Extension проигрывает `<audio src="audio_url">` и параллельно показывает subtitle overlay.
+
+### 7.6 Синхронизация озвучки и действий
+
+Базовая стратегия MVP:
+
+- `show_subtitle` и `play_audio` отправляются перед интерактивными действиями шага.
+- Если действие короткое, сервер ждёт завершения аудио (`duration_ms`) и затем переходит дальше.
+- Если действие длинное, используется `wait_after_actions_ms` + контрольный таймаут.
+
+Улучшение после MVP:
+- timeline per step (миллисекундная шкала),
+- фоновые и foreground actions,
+- ускорение/замедление голоса под целевую длительность шага.
+
+### 7.7 Управление состоянием (play/pause/stop/replay)
+
+- `pause`: сервер перестаёт выдавать новые команды; extension завершает текущую и ждёт.
+- `stop`: сервер переводит сессию в `stopped`, очередь закрывается.
+- `replay`: создаётся новая `playback_session`, шаги проигрываются с начала (или с выбранного шага).
+
+### 7.8 Минимальные API контракты для этого flow
+
+- `POST /api/presentations` → создать презентацию и analysis job.
+- `GET /api/jobs/:jobId/events` → прогресс генерации.
+- `GET /api/presentations/:id/plan` + `PATCH /api/presentations/:id/plan` → просмотр/редактирование.
+- `POST /api/playback/start|pause|stop|replay` → управление проигрыванием.
+- `GET /api/sessions/:id/next-command` + `POST /api/sessions/:id/command-result` → канал с extension.
+
+### 7.9 Наблюдаемость (что логируем обязательно)
+
+- `presentationId`, `jobId`, `sessionId`, `stepId`, `commandId`.
+- AI latency, TTS latency, command execution latency.
+- Причины ошибок: selector_not_found, navigation_timeout, audio_playback_error, provider_error.
